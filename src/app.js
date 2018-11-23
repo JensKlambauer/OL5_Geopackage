@@ -30,7 +30,6 @@ proj4.defs('EPSG:25833', '+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0
 register(proj4);
 let center = transform([12.54257, 50.82634], "EPSG:4326", "EPSG:25833");
 
-var defaultZoomLevel = 0;
 var urlGeosnDop = 'https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest';
 var sachsenDop = new TileLayer({
   title: 'DOP Sachsen',
@@ -45,25 +44,26 @@ var sachsenDop = new TileLayer({
     }
   })
 });
+
 var map = new Map({
   controls: defaultControls({ attributionOptions: { collapsible: true } }).extend([mousePositionControl]),
   layers: [],
   target: 'map',
   view: new View({
-    center: center, 
+    center: center,
     extent: [324701.0, 5632072.0, 328739.0, 5634781.0], //transformExtent([12.365956, 50.585565, 12.908844, 50.9645759], 'EPSG:4326','EPSG:25833'),               
     projection: "EPSG:25833",
     //resolution: 100   
   })
 });
 
-
-
 // load geopackage (rivers example)
-loadGeopackage('http://localhost:8066/wmsWAD25833.gpkg');
-// loadGeopackage('http://localhost:8085/DopSachsen25833/wmsWADKanal.gpkg')
+// loadGeopackage('http://localhost:8066/wmsWAD25833.gpkg');
+loadGeopackage('http://localhost:8085/DopSachsen25833/wmsWADKanal.gpkg')
 // loadGeopackage('http://ngageoint.github.io/GeoPackage/examples/rivers.gpkg');
 
+var defaultZoomLevel = 0;
+var tableName = "wmsWAD25833";
 // function to load the geopackage using xhr
 function loadGeopackage(filepath) {
   // var xhr = new XMLHttpRequest();
@@ -78,10 +78,10 @@ function loadGeopackage(filepath) {
   // };
   // xhr.send();
 
-  fetch(filepath, { method: "GET" })  // , cache: "no-cache", mode: "no-cors",  headers: {"Content-Type": "arraybuffer"}
-    .then(function (response) {         
+  fetch(filepath, { method: "GET", mode: "cors" })  // , cache: "no-cache", mode: "no-cors",  headers: {"Content-Type": "arraybuffer"}
+    .then(function (response) {
       return response.arrayBuffer();
-    }).then(function (resp)  {
+    }).then(function (resp) {
       // console.log(resp)
       if (resp) {
         var byteArray = new Uint8Array(resp);
@@ -91,15 +91,22 @@ function loadGeopackage(filepath) {
 }
 
 // handle geopackage (changed from documentation - https://github.com/ngageoint/geopackage-js)
-function loadByteArray(array, callback) {
-  // var db = new SQL.Database(array);
+function loadByteArray(array) {
   console.log("try loadByteArray")
   GeoPackageAPI.open(array, function (err, gp) {
-    // // var geoPackage = new GeoPackage('', '', connection); dop25833Gl wmsWAD25833Gl
-    console.log("GeoPackageAPI open")
-    console.log("Error", err)    
-  }).then((gp) => {
-    getTilesFromTable(gp, "wmsWAD25833", defaultZoomLevel);})
+    if(err)
+      console.log("Fehler:", err)
+   })
+    .then((gp) => {
+      if(gp) {
+        console.log("GeoPackageAPI open");
+        if(gp.isTable(tableName)) 
+          getTilesFromTable(gp, tableName, defaultZoomLevel);
+        else
+          console.log("error tablename", tableName)
+      }    
+    })
+    .catch((err) => console.log("Fehler:", err))
 }
 
 // function to get tiles from table
@@ -107,7 +114,7 @@ function getTilesFromTable(gpkg, tableName, zoom) {
   // console.log("gpkg", gpkg)
   // console.log("tableName", tableName)
   var tileDao = gpkg.getTileDao(tableName);
-  // console.log("tileDao", tileDao)
+  console.log("tileDao", tileDao)
   var tms = tileDao.tileMatrixSet;
   // console.log("tms", tms)
   var tm = tileDao.getTileMatrixWithZoomLevel(zoom);
@@ -145,7 +152,7 @@ function getTilesFromTable(gpkg, tableName, zoom) {
         var tileX = parseInt(tileCoord[1]);
         var tileY = -tileCoord[2] - 1;
         var tileZ = tileCoord[0];
-        console.log("tile", tileX, tileY, tileZ)
+        // console.log("tile", tileX, tileY, tileZ)
         const t1 = tileDao.queryForTile(tileX, tileY, tileZ); //  (column, row, zoomLevel)
         if (t1) {
           // console.log("t1", t1)
@@ -161,26 +168,6 @@ function getTilesFromTable(gpkg, tableName, zoom) {
           // console.log("data", 'data:image/png;base64,' + base64Data)
           tile.getImage().src = 'data:image/png;base64,' + base64Data;
         }
-        // console.log("map.getSize()", map.getSize())
-        // let bounds = map.getView().calculateExtent(map.getSize());
-        // var wgs84Bounds = transformExtent(bounds, 'EPSG:25833','EPSG:4326');
-        // console.log("zoom", map.getView().getZoom())
-        // console.log("wgs84Bounds", wgs84Bounds)        
-        // const center = map.getView().getCenter();
-        // const newView = new View({
-        //   center: center,
-        //   projection: "EPSG:25833",
-        //   resolution: map.getView().getResolution()
-        // });
-        // const bounds = newView.calculateExtent([256, 256])
-        // var wgs84Bounds = transformExtent(bounds, 'EPSG:25833', 'EPSG:4326');
-        // console.log("wgs84Bounds", wgs84Bounds)
-
-        // gpr.getTileWithWgs84BoundsInProjection(new BoundingBox(wgs84Bounds[0], wgs84Bounds[2], wgs84Bounds[1], wgs84Bounds[3]), tileZ, 'EPSG:25833')
-        //   .then((tileBase64DataURL) => {
-        //     // console.log("tileBase64DataURL", tileBase64DataURL)
-        //     tile.getImage().src = tileBase64DataURL;
-        //   });
       },
       // other source config options from your snippet here, e.g. tileGrid
       tileGrid: tileGrid
@@ -190,9 +177,8 @@ function getTilesFromTable(gpkg, tableName, zoom) {
   // console.log("tileLayer", tileLayer)
   // add layer to map
   map.addLayer(tileLayer);
-  // });  
 
-  map.getView().fit([324701.0, 5632072.0, 328739.0, 5634781.0], { constrainResolution: true, nearest: true } )
+  map.getView().fit([324701.0, 5632072.0, 328739.0, 5634781.0], { constrainResolution: true, nearest: true })
   // map.getView().fit([326913.4, 5633204.96, 327275.8, 5633567.4])
   // console.log("zoom", map.getView().getZoom())
   // console.log("extent", map.getView().calculateExtent(map.getSize()))
