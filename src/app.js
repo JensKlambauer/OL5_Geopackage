@@ -47,11 +47,11 @@ var sachsenDop = new TileLayer({
 });
 var map = new Map({
   controls: defaultControls({ attributionOptions: { collapsible: true } }).extend([mousePositionControl]),
-  layers: [sachsenDop],
+  layers: [],
   target: 'map',
   view: new View({
-    center: center,
-    extent: [324701, 5627656.721348314, 331825.5522291621, 5634781], //transformExtent([12.365956, 50.585565, 12.908844, 50.9645759], 'EPSG:4326','EPSG:25833'),               
+    center: center, 
+    extent: [324701.0, 5632072.0, 328739.0, 5634781.0], //transformExtent([12.365956, 50.585565, 12.908844, 50.9645759], 'EPSG:4326','EPSG:25833'),               
     projection: "EPSG:25833",
     //resolution: 100   
   })
@@ -60,23 +60,34 @@ var map = new Map({
 
 
 // load geopackage (rivers example)
-loadGeopackage('wmsWAD3.gpkg');
+loadGeopackage('http://localhost:8066/wmsWAD25833.gpkg');
+// loadGeopackage('http://localhost:8085/DopSachsen25833/wmsWADKanal.gpkg')
 // loadGeopackage('http://ngageoint.github.io/GeoPackage/examples/rivers.gpkg');
 
 // function to load the geopackage using xhr
 function loadGeopackage(filepath) {
-  var xhr = new XMLHttpRequest();
-  xhr.open("GET", filepath, true);
-  xhr.responseType = "arraybuffer";
-  xhr.onload = function (oEvent) {
-    var arrayBuffer = xhr.response;
-    if (arrayBuffer) {
-      var byteArray = new Uint8Array(arrayBuffer);
-      // 
-      loadByteArray(byteArray);
-    }
-  };
-  xhr.send();
+  // var xhr = new XMLHttpRequest();
+  // xhr.open("GET", filepath, true);
+  // xhr.responseType = "arraybuffer";
+  // xhr.onload = function (oEvent) {
+  //   var arrayBuffer = xhr.response;
+  //   if (arrayBuffer) {
+  //     var byteArray = new Uint8Array(arrayBuffer);
+  //     loadByteArray(byteArray);
+  //   }
+  // };
+  // xhr.send();
+
+  fetch(filepath, { method: "GET" })  // , cache: "no-cache", mode: "no-cors",  headers: {"Content-Type": "arraybuffer"}
+    .then(function (response) {         
+      return response.arrayBuffer();
+    }).then(function (resp)  {
+      // console.log(resp)
+      if (resp) {
+        var byteArray = new Uint8Array(resp);
+        loadByteArray(byteArray);
+      }
+    });
 }
 
 // handle geopackage (changed from documentation - https://github.com/ngageoint/geopackage-js)
@@ -84,10 +95,11 @@ function loadByteArray(array, callback) {
   // var db = new SQL.Database(array);
   console.log("try loadByteArray")
   GeoPackageAPI.open(array, function (err, gp) {
-    // var geoPackage = new GeoPackage('', '', connection); dop25833Gl wmsWAD25833Gl
-    console.log("DB Open")
-    getTilesFromTable(gp, "wmsWAD25833Gl", defaultZoomLevel);
-  });
+    // // var geoPackage = new GeoPackage('', '', connection); dop25833Gl wmsWAD25833Gl
+    console.log("GeoPackageAPI open")
+    console.log("Error", err)    
+  }).then((gp) => {
+    getTilesFromTable(gp, "wmsWAD25833", defaultZoomLevel);})
 }
 
 // function to get tiles from table
@@ -108,7 +120,7 @@ function getTilesFromTable(gpkg, tableName, zoom) {
     // resolutions: resolutions,
     tileSize: [tm.tile_width, tm.tile_height] // tile size in pixels
   });
-  // console.log("tileGrid", tileGrid)
+  console.log("tileGrid", tileGrid)
 
   // create tile retriever
   // var gpr = new GeoPackageTileRetriever(tileDao, tm.tile_width, tm.tile_height);
@@ -135,7 +147,7 @@ function getTilesFromTable(gpkg, tableName, zoom) {
         var tileZ = tileCoord[0];
         console.log("tile", tileX, tileY, tileZ)
         const t1 = tileDao.queryForTile(tileX, tileY, tileZ); //  (column, row, zoomLevel)
-        if(t1) {
+        if (t1) {
           // console.log("t1", t1)
           const tileData = t1.getTileData();
           // var type = fileType(tileData); // not working
@@ -143,12 +155,12 @@ function getTilesFromTable(gpkg, tableName, zoom) {
           var bytes = tileData;
           var len = bytes.byteLength;
           for (var i = 0; i < len; i++) {
-            binary += String.fromCharCode( bytes[ i ] );
+            binary += String.fromCharCode(bytes[i]);
           }
-          var base64Data = btoa( binary );
+          var base64Data = btoa(binary);
           // console.log("data", 'data:image/png;base64,' + base64Data)
           tile.getImage().src = 'data:image/png;base64,' + base64Data;
-        } 
+        }
         // console.log("map.getSize()", map.getSize())
         // let bounds = map.getView().calculateExtent(map.getSize());
         // var wgs84Bounds = transformExtent(bounds, 'EPSG:25833','EPSG:4326');
@@ -180,9 +192,10 @@ function getTilesFromTable(gpkg, tableName, zoom) {
   map.addLayer(tileLayer);
   // });  
 
-  map.getView().fit([324701.0, 5632072.0, 328739.0, 5634781.0] )
-  console.log("zoom", map.getView().getZoom())
-  console.log("extent", map.getView().calculateExtent(map.getSize()))
+  map.getView().fit([324701.0, 5632072.0, 328739.0, 5634781.0], { constrainResolution: true, nearest: true } )
+  // map.getView().fit([326913.4, 5633204.96, 327275.8, 5633567.4])
+  // console.log("zoom", map.getView().getZoom())
+  // console.log("extent", map.getView().calculateExtent(map.getSize()))
 }
 
 
