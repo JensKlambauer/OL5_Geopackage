@@ -35,9 +35,6 @@ var sachsenDop = new TileLayer({
   title: 'DOP Sachsen',
   source: new TileWMS({
     projection: "EPSG:25833",
-    // tileLoadFunction: function(tile, url) {
-    //   console.log("tile", tile)
-    //  },
     url: urlGeosnDop,
     params: {
       'LAYERS': 'sn_dop_020'
@@ -47,7 +44,7 @@ var sachsenDop = new TileLayer({
 
 var map = new Map({
   controls: defaultControls({ attributionOptions: { collapsible: true } }).extend([mousePositionControl]),
-  layers: [sachsenDop],
+  layers: [],
   target: 'map',
   view: new View({
     center: center,
@@ -59,13 +56,13 @@ var map = new Map({
 
 // load geopackage (rivers example)
 // loadGeopackage('http://localhost:8066/wmsWAD25833.gpkg');
-loadGeopackage('http://localhost:8085/DopSachsen25833/wmsWADKanal.gpkg')
-// loadGeopackage('http://ngageoint.github.io/GeoPackage/examples/rivers.gpkg');
+loadGeopackage('http://localhost:8085/DopSachsen25833/wmsWADKanal.gpkg') //dop25833_1.gpkg
+// loadGeopackage('http://ngageoint.github.io/GeoPackage/examples/rivers.gpkg'); // EPSG:3857
 
 // default values
 var defaultZoomLevel = 0;
 var tableName = ""; // deps. from tablename!
-// abhängig von Projektion 'EPSG:25833' 
+// Abhängigkeit von Projektion 'EPSG:25833' 
 
 // function to load the geopackage using xhr
 function loadGeopackage(filepath) {
@@ -106,7 +103,8 @@ function loadByteArray(array) {
         const tileTables = gp.getTileTables();
         if (tileTables) {
           // Tabellenname von der ersten Tiletabelle
-          tableName = tileTables[0]
+          tableName = tileTables[0]  
+          console.log("tableName", tableName)
         }
         else
           throw new Error("no tiletable found")
@@ -123,13 +121,13 @@ function loadByteArray(array) {
 // function to get tiles from table
 function getTilesFromTable(gpkg, tableName, zoom) {
   // console.log("gpkg", gpkg)
-  // console.log("tableName", tableName)
   var tileDao = gpkg.getTileDao(tableName);
-  console.log("tileDao", tileDao)
+  // console.log("tileDao", tileDao)
 
   var tms = tileDao.tileMatrixSet;
   // console.log("tms", tms)
 
+  // TileMatrix Zoomstufe 0
   var tm = tileDao.getTileMatrixWithZoomLevel(zoom);
   // console.log("tm", tm)
 
@@ -166,7 +164,7 @@ function getTilesFromTable(gpkg, tableName, zoom) {
         var tileX = parseInt(tileCoord[1]);
         var tileY = -tileCoord[2] - 1;
         var tileZ = tileCoord[0];
-        // console.log("tile", tileX, tileY, tileZ)
+        console.log("tile", tileX, tileY, tileZ)
         const t1 = tileDao.queryForTile(tileX, tileY, tileZ);  // (column, row, zoomLevel)
         if (t1) {
           // console.log("t1", t1)
@@ -195,7 +193,7 @@ function getTilesFromTable(gpkg, tableName, zoom) {
   // Zoom to Extent -> extent of geopackage content
   // getTableContents -> data from table "gpkg_contents"
   const contents = gpkg.getTableContents(tableName);
-  // console.log("Extent Contents", content)
+  // console.log("Extent Contents", contents)
   map.getView().fit([contents.min_x, contents.min_y, contents.max_x, contents.max_y], { constrainResolution: true, nearest: true })
   // map.getView().fit([324701.0, 5632072.0, 328739.0, 5634781.0], { constrainResolution: true, nearest: true })
   // map.getView().fit([326913.4, 5633204.96, 327275.8, 5633567.4])
