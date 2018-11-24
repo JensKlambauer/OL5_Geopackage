@@ -47,7 +47,7 @@ var sachsenDop = new TileLayer({
 
 var map = new Map({
   controls: defaultControls({ attributionOptions: { collapsible: true } }).extend([mousePositionControl]),
-  layers: [],
+  layers: [sachsenDop],
   target: 'map',
   view: new View({
     center: center,
@@ -62,8 +62,11 @@ var map = new Map({
 loadGeopackage('http://localhost:8085/DopSachsen25833/wmsWADKanal.gpkg')
 // loadGeopackage('http://ngageoint.github.io/GeoPackage/examples/rivers.gpkg');
 
+// default values
 var defaultZoomLevel = 0;
-var tableName = "wmsWAD25833";
+var tableName = ""; // deps. from tablename!
+// abhängig von Projektion 'EPSG:25833' 
+
 // function to load the geopackage using xhr
 function loadGeopackage(filepath) {
   // var xhr = new XMLHttpRequest();
@@ -78,7 +81,7 @@ function loadGeopackage(filepath) {
   // };
   // xhr.send();
 
-  fetch(filepath, { method: "GET", mode: "cors" })  // , cache: "no-cache", mode: "no-cors",  headers: {"Content-Type": "arraybuffer"}
+  fetch(filepath, { method: "GET" })  // , cache: "no-cache", mode: "no-cors",  headers: {"Content-Type": "arraybuffer"}
     .then(function (response) {
       return response.arrayBuffer();
     }).then(function (resp) {
@@ -94,17 +97,25 @@ function loadGeopackage(filepath) {
 function loadByteArray(array) {
   console.log("try loadByteArray")
   GeoPackageAPI.open(array, function (err, gp) {
-    if(err)
+    if (err)
       console.log("Fehler:", err)
-   })
+  })
     .then((gp) => {
-      if(gp) {
+      if (gp) {
         console.log("GeoPackageAPI open");
-        if(gp.isTable(tableName)) 
+        const tileTables = gp.getTileTables();
+        if (tileTables) {
+          // Tabellenname von der ersten Tiletabelle
+          tableName = tileTables[0]
+        }
+        else
+          throw new Error("no tiletable found")
+
+        if (gp.isTable(tableName))
           getTilesFromTable(gp, tableName, defaultZoomLevel);
         else
-          console.log("error tablename", tableName)
-      }    
+          throw new Error("error table with tablename " + tableName + " is not a valid table")
+      }
     })
     .catch((err) => console.log("Fehler:", err))
 }
@@ -115,11 +126,14 @@ function getTilesFromTable(gpkg, tableName, zoom) {
   // console.log("tableName", tableName)
   var tileDao = gpkg.getTileDao(tableName);
   console.log("tileDao", tileDao)
+
   var tms = tileDao.tileMatrixSet;
   // console.log("tms", tms)
+
   var tm = tileDao.getTileMatrixWithZoomLevel(zoom);
   // console.log("tm", tm)
-  // create tile grid
+
+  // create Openlayers tile grid
   var tileGrid = createXYZ({
     extent: [tms.min_x, tms.min_y, tms.max_x, tms.max_y], // extent of geopackage content
     maxZoom: tileDao.maxZoom,
@@ -129,11 +143,11 @@ function getTilesFromTable(gpkg, tableName, zoom) {
   });
   console.log("tileGrid", tileGrid)
 
-  // create tile retriever
+  // create tile retriever on projection 4326, 3857
   // var gpr = new GeoPackageTileRetriever(tileDao, tm.tile_width, tm.tile_height);
   // console.log("gpr", gpr)
 
-  // setup tile layer
+  // setup tile layer -> EPSG:25833
   var tileLayer = new TileLayer({
     source: new XYZ({
       // opaque: false,
@@ -153,7 +167,7 @@ function getTilesFromTable(gpkg, tableName, zoom) {
         var tileY = -tileCoord[2] - 1;
         var tileZ = tileCoord[0];
         // console.log("tile", tileX, tileY, tileZ)
-        const t1 = tileDao.queryForTile(tileX, tileY, tileZ); //  (column, row, zoomLevel)
+        const t1 = tileDao.queryForTile(tileX, tileY, tileZ);  // (column, row, zoomLevel)
         if (t1) {
           // console.log("t1", t1)
           const tileData = t1.getTileData();
@@ -178,7 +192,12 @@ function getTilesFromTable(gpkg, tableName, zoom) {
   // add layer to map
   map.addLayer(tileLayer);
 
-  map.getView().fit([324701.0, 5632072.0, 328739.0, 5634781.0], { constrainResolution: true, nearest: true })
+  // Zoom to Extent -> extent of geopackage content
+  // getTableContents -> data from table "gpkg_contents"
+  const contents = gpkg.getTableContents(tableName);
+  // console.log("Extent Contents", content)
+  map.getView().fit([contents.min_x, contents.min_y, contents.max_x, contents.max_y], { constrainResolution: true, nearest: true })
+  // map.getView().fit([324701.0, 5632072.0, 328739.0, 5634781.0], { constrainResolution: true, nearest: true })
   // map.getView().fit([326913.4, 5633204.96, 327275.8, 5633567.4])
   // console.log("zoom", map.getView().getZoom())
   // console.log("extent", map.getView().calculateExtent(map.getSize()))
