@@ -51,13 +51,13 @@ var map = new Map({
     // center: center,
     // extent: [324701.0, 5632072.0, 328739.0, 5634781.0], //transformExtent([12.365956, 50.585565, 12.908844, 50.9645759], 'EPSG:4326','EPSG:25833'),               
     projection: "EPSG:25833",
-    minZoom: 12,
+    minZoom: 8,
     maxZoom: 21
   })
 });
 
-// loadGeopackage('http://localhost:8066/wmsWAD25833.gpkg');
-loadGeopackage('http://localhost:8085/DopSachsen25833/wmsWADKanal.gpkg') //dop25833_1.gpkg
+loadGeopackage('http://localhost:8066/wmsWAD25833.gpkg');
+// loadGeopackage('http://localhost:8085/DopSachsen25833/DopSn5000.gpkg') //dop25833_1.gpkg
 // loadGeopackage('http://ngageoint.github.io/GeoPackage/examples/rivers.gpkg'); // EPSG:3857
 
 // default values
@@ -167,7 +167,7 @@ function getTilesFromTable(gpkg, tableName, zoom) {
           // console.log("t1le", t1le)
           const tileData = t1le.getTileData();
           const type = fileType(tileData); // png or jpeg
-          // console.log("type", fileType(tileData))
+          console.log("type", type.mime)
           var binary = '';
           const len = tileData.byteLength;
           for (let i = 0; i < len; i++) {
