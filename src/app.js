@@ -56,7 +56,7 @@ var map = new Map({
   })
 });
 
-loadGeopackage('http://localhost:8066/wmsWAD25833.gpkg');
+loadGeopackage('http://localhost:8066/wmsWAD25833.gpkg'); //sndop25833.gpkg
 // loadGeopackage('http://localhost:8085/DopSachsen25833/DopSn5000.gpkg') //dop25833_1.gpkg
 // loadGeopackage('http://ngageoint.github.io/GeoPackage/examples/rivers.gpkg'); // EPSG:3857
 
@@ -165,16 +165,18 @@ function getTilesFromTable(gpkg, tableName, zoom) {
         const t1le = tileDao.queryForTile(tileX, tileY, tileZ);  // (column, row, zoomLevel)
         if (t1le) {
           // console.log("t1le", t1le)
-          const tileData = t1le.getTileData();
-          const type = fileType(tileData); // png or jpeg
-          console.log("type", type.mime)
-          var binary = '';
-          const len = tileData.byteLength;
-          for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(tileData[i]);
-          }
-          const base64Data = btoa(binary);
-          tile.getImage().src = 'data:' + type.mime + ';base64,' + base64Data;
+          // const tileData = t1le.getTileData();
+          // const type = fileType(tileData); // png or jpeg
+          // console.log("type", type.mime)
+          // var binary = '';
+          // const len = tileData.byteLength;
+          // for (let i = 0; i < len; i++) {
+          //   binary += String.fromCharCode(tileData[i]);
+          // }
+          // const base64Data = btoa(binary);
+          // tile.getImage().src = 'data:' + type.mime + ';base64,' + base64Data;
+          const blob = new Blob([t1le.getTileData()]);
+          tile.getImage().src = URL.createObjectURL(blob);
         }
       },
       // other source config options from your snippet here, e.g. tileGrid
